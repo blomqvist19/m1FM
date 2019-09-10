@@ -1,4 +1,3 @@
-// @ts-nocheck
 const cameraEl = document.getElementById('camera');
 const canvasEl = document.getElementById('captureCanvas');
 const offscreenCanvasEl = document.getElementById('offscreenCanvas');
@@ -11,20 +10,33 @@ cameraEl.addEventListener('play', () => {
   console.log('Video stream started');
   offscreenCanvasEl.width = cameraEl.videoWidth;
   offscreenCanvasEl.height = cameraEl.videoHeight;
-  canvasEl.width = cameraEl.videoWidth;
-  canvasEl.height = cameraEl.videoHeight;
+  canvasEl.width = window.innerWidth;
+  canvasEl.height = window.innerHeight;
 
   // Start processing frames
   window.requestAnimationFrame(renderFrame);
 });
 
 function renderFrame() {
+  function draw(){
+
+    var canvas = document.getElementById('captureCanvas');
+    if (canvas.getContext) {
+      var ctx = canvas.getContext('2d');
+  
+      ctx.fillRect(0, 0, cameraEl.videoWidth, cameraEl.videoHeight);
+      ctx.clearRect(0, 0, cameraEl.videoWidth, cameraEl.videoHeight);
+    }
+  }
+  draw();
+
   let offscreenC = offscreenCanvasEl.getContext('2d');
   let c = canvasEl.getContext('2d');
 
   // 1. Capture to offscreen buffer
   offscreenC.drawImage(cameraEl, 0, 0);
   let frame = offscreenC.getImageData(0, 0, offscreenCanvasEl.width, offscreenCanvasEl.height);
+  let currFrame = offscreenC.getImageData(0, 0, offscreenCanvasEl.width, offscreenCanvasEl.height);
 
   // Keep track of how many pixels have changed
   let diffCount = 0;
@@ -41,6 +53,11 @@ function renderFrame() {
         frame.data[pixelIndex * 4 + 3] = 0;
         diffCount++; // Keep track of how many we find
       }
+      else {
+        frame.data[pixelIndex * 4 + 0] = 0;
+        frame.data[pixelIndex * 4 + 1] = 0;
+        frame.data[pixelIndex * 4 + 2] = 0;
+      }
     }
   }
 
@@ -50,6 +67,7 @@ function renderFrame() {
   gradient.addColorStop(1, 'palegreen');
   c.fillStyle = gradient;
   c.fillRect(0, 0, canvasEl.width, canvasEl.height);
+
 
   // Write modified frame back to offscreen buffer
   offscreenC.putImageData(frame, 0, 0);
@@ -68,14 +86,14 @@ function renderFrame() {
 
   // At the moment we always compare to the last frame from the camera,
   // but we could make a logic so comparison frames are only kept every second, for example:
-  //if (now-oldFrameCapturedAt < 1000) keepFrame = false;
+  if (now-oldFrameCapturedAt < 2000) keepFrame = false;
 
   // Or, this only keeps the first frame and never updates it
   // if (oldFrame !== null) keepFrame = false;
 
   // Remember last frame
   if (keepFrame) {
-    oldFrame = frame;
+    oldFrame = currFrame;
     oldFrameCapturedAt = now;
   }
 
@@ -100,7 +118,7 @@ function comparePixel(frameA, frameB, i) {
   // Use Math.abs to make negative values positive
   // (we don't care if the new value is higher or lower, just that it's changed)
   let diff = Math.abs(bwA - bwB);
-  if (diff < 5) return true;
+  if (diff < 15) return true;
   return false;
 }
 
